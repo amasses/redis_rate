@@ -4,19 +4,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis"
 	"github.com/go-redis/redis_rate"
 	"golang.org/x/time/rate"
+	"gopkg.in/redis.v3"
 )
 
 func rateLimiter() *redis_rate.Limiter {
-	ring := redis.NewRing(&redis.RingOptions{
-		Addrs: map[string]string{"server0": ":6379"},
+	// ring := redis.NewRing(&redis.RingOptions{
+	// 	Addrs: map[string]string{"server0": ":6379"},
+	// })
+	myRedis := redis.NewClient(&redis.Options{
+		Addr:     "127.0.0.1:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
 	})
-	if err := ring.FlushDb().Err(); err != nil {
+	if err := myRedis.FlushDb().Err(); err != nil {
 		panic(err)
 	}
-	return redis_rate.NewLimiter(ring)
+	return redis_rate.NewLimiter(myRedis)
 }
 
 func TestAllow(t *testing.T) {
@@ -85,8 +90,12 @@ func TestAllowRateSecond(t *testing.T) {
 }
 
 func TestRedisIsDown(t *testing.T) {
-	ring := redis.NewRing(&redis.RingOptions{})
-	l := redis_rate.NewLimiter(ring)
+	myRedis := redis.NewClient(&redis.Options{
+		Addr:     "127.0.0.1:6377",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	l := redis_rate.NewLimiter(myRedis)
 	l.Fallback = rate.NewLimiter(rate.Every(time.Second), 1)
 
 	rate, _, allow := l.AllowMinute("test_id", 1)

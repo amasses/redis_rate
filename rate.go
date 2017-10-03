@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis"
 	"golang.org/x/time/rate"
+	"gopkg.in/redis.v3"
 )
 
 const redisPrefix = "rate"
 
 type rediser interface {
 	Del(...string) *redis.IntCmd
-	Pipelined(func(pipe redis.Pipeliner) error) ([]redis.Cmder, error)
+	Pipelined(func(pipe *redis.Pipeline) error) ([]redis.Cmder, error)
 }
 
 // Limiter controls how frequently events are allowed to happen.
@@ -136,7 +136,7 @@ func (l *Limiter) AllowRate(name string, rateLimit rate.Limit) (delay time.Durat
 
 func (l *Limiter) incr(name string, dur time.Duration, n int64) (int64, error) {
 	var incr *redis.IntCmd
-	_, err := l.redis.Pipelined(func(pipe redis.Pipeliner) error {
+	_, err := l.redis.Pipelined(func(pipe *redis.Pipeline) error {
 		incr = pipe.IncrBy(name, n)
 		pipe.Expire(name, dur)
 		return nil
